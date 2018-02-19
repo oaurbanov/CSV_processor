@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 import csv
-#import json
+import numpy
+import json
 from classes.communications import communications
 # from classes.logging import myLog
 
@@ -13,18 +14,65 @@ from classes.communications import communications
 
 # ::::::::::::::::::: Globals ::::::::::::::::::::::::::::::::::::::::::::::::
 #configPath = 'configFiles/config.json'
-csvPath = "tests/dLogger_cold.csv",
+#csvPath_in = 'configFiles/config.json'
 
+# csvPath_in = "tests/stag_cold.csv"
+csvPath_in = "tests/dLogger_warm.csv"
+csvPath_out = "tests/dLogger_warm_out.csv"
+
+
+def roundTemp(temp):
+    if (temp*10)%2==0:
+        newTemp = temp
+    else:
+        newTemp = temp+0.1
+    return round(newTemp,1)
+
+#vector for storing xAxis, temperature values 
+xAxis = numpy.arange(-10.2, 30.4, 0.2)
+#for x in xAxis:
+#    print(round(x,1))
+
+#array of dicts for storing ocurrencies in xAxis
+samplesArray = []
+for x in xAxis:
+    #ocurrencies.append( round(x,1))
+    sample = {} #dictionary for each row
+    sample["tempValue"] = round(x,1)
+    sample["ocurrency"] = 0
+    samplesArray.append(sample)
+
+
+#ocurrencies["1.2"] = 3
+
+#print(json.dumps(samplesArray))
 
 # :::::::::::::::::::::::::::HELPERS::::::::::::::::::::::::::::::::::::::::::::
-def getJSONFromTestoCSV(csvfile, jsonfile):
-    fieldnames = ("ID", "date", "temperature", "humidity")
-    reader = csv.DictReader(csvfile, fieldnames, delimiter=';', quotechar='|')
+def convertCSV(csvfile_in, csvfile_out):
+    fieldnames = ("Time","Temperature [ ºC ]")
+    reader = csv.DictReader(csvfile_in, fieldnames, delimiter=',', quotechar='|')
     for idx, row in enumerate(reader):
-        if (idx != 0):
-            # print(row)
-            json.dump(row, jsonfile)
-            jsonfile.write('\n')
+        if (idx > 1):
+
+            #extracting value of temperature from csv
+            temp = float(row["Temperature [ ºC ]"])
+            roundedTemp = roundTemp(temp)
+
+            #Counting the ocurrencies of each value of temperature
+            for x in samplesArray:
+                if (x["tempValue"] == roundedTemp):
+                    x["ocurrency"] = x["ocurrency"]+1
+                    #ocurrencies[]
+
+    #print(json.dumps(samplesArray)) # samplesArray is filled with tempValues and ocurrencies
+
+    #putting info into the new csv
+    csvfile_out.write("Graph type: Integral Processed Temperature , Total time: 250 hours ,  timeStamp: 2017-12-05 20:26:14 \n")
+    csvfile_out.write("Temperature [ ºC ] , Time [ hours ]\n")
+    for x in samplesArray:
+        strRow = ""
+        strRow = strRow + str(x["tempValue"]) + " , " + str(x["ocurrency"]) + "\n"
+        csvfile_out.write(strRow)
 
 # :::::::::::::::::::::MAIN:::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -38,10 +86,21 @@ def getJSONFromTestoCSV(csvfile, jsonfile):
 # configData['log'] = log
 # log.logInfo('Starting Testo_Converter')
 
-with open(csvPath, 'r') as csvfile:
-    with open(jsonPath, 'w') as jsonfile:
-        getJSONFromTestoCSV(csvfile, jsonfile)
 
 
-comms = communications.Communications(configData)
-comms.sendTestoJSON(jsonPath)
+
+with open(csvPath_in, 'r') as csvfile_in:
+    with open(csvPath_out, 'w') as csvfile_out:
+        convertCSV(csvfile_in, csvfile_out)
+
+
+
+
+
+# with open(csvPath_in, newline='') as csvfile:
+#     reader = csv.DictReader(csvfile)
+#     for row in reader:
+#         print(row['Time'], row['Temperature'])
+
+#comms = communications.Communications(configData)
+#comms.sendTestoJSON(jsonPath)
